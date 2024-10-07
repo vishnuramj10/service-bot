@@ -61,6 +61,7 @@ def invoke_llama_model(prompt_text):
         return "Sorry, there was an error processing your request."
 
 # Function to find the best matching keyword
+"""
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     try:
         model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
@@ -78,6 +79,7 @@ def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     except Exception as e:
         print(f"Error in finding best matching keyword: {e}")
         return None
+"""
 
 # Function to process the chatbot query
 def chatbot(query, vectordb, keyword_image_map):
@@ -85,10 +87,13 @@ def chatbot(query, vectordb, keyword_image_map):
         return "Please ask a valid question.", []
 
     try:
+        print('uioiug')
         retrieved_docs = vectordb.similarity_search(query, k=4)
         print('hupgoh')
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        best_keyword = find_best_matching_keyword(query, keyword_image_map)
+        print('hiuophfd')
+        #best_keyword = find_best_matching_keyword(query, keyword_image_map)
+        best_keyword = 'Every Morning'
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
         print('vfff')
         template = f"""
@@ -132,6 +137,7 @@ def home():
 def ask():
     try:
         query = request.form['message']
+        print(query)
         response, image_paths = chatbot(query, vectordb, keyword_image_map)
     except Exception as e:
         print(f"Error handling request: {e}")
