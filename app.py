@@ -8,6 +8,8 @@ from PIL import Image
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import PyPDFLoader
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -37,6 +39,8 @@ bedrock_runtime = boto3.client(
 
 pdf_path = "document/Copy of POET_Everyday_Instructions.pdf"
 vectordb = load_or_create_vector_db(pdf_path)
+print(vectordb)
+print('hello')
 keyword_image_map = create_keyword_mapping()
 
 # Function to call the LLM model via Bedrock
@@ -60,26 +64,38 @@ def invoke_llama_model(prompt_text):
         print(f"Error invoking LLM model: {e}")
         return "Sorry, there was an error processing your request."
 
-# Function to find the best matching keyword
-"""
+
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     try:
-        model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+        # Initialize the TF-IDF Vectorizer
+        vectorizer = TfidfVectorizer()
 
-        user_query_embedding = model.encode([user_query])
-        keyword_embeddings = model.encode(list(keyword_image_map.keys()))
-        similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
+        # Get the list of all keywords from the keyword_image_map
+        keywords = list(keyword_image_map.keys())
+
+        # Combine the keywords and user query into one list
+        all_texts = keywords + [user_query]
+
+        # Fit and transform the combined list into a TF-IDF matrix
+        tfidf_matrix = vectorizer.fit_transform(all_texts)
+
+        # Compute cosine similarity between the user query (last element) and all keywords
+        similarities = cosine_similarity(tfidf_matrix[-1:], tfidf_matrix[:-1])[0]
+
+        # Find the best match (keyword with highest similarity)
         best_match_index = np.argmax(similarities)
         best_match_similarity = similarities[best_match_index]
+
+        # If the similarity exceeds the threshold, return the best matching keyword
         if best_match_similarity >= threshold:
-            best_keyword = list(keyword_image_map.keys())[best_match_index]
+            best_keyword = keywords[best_match_index]
             return best_keyword
         else:
             return None
+
     except Exception as e:
         print(f"Error in finding best matching keyword: {e}")
         return None
-"""
 
 # Function to process the chatbot query
 def chatbot(query, vectordb, keyword_image_map):
@@ -87,15 +103,12 @@ def chatbot(query, vectordb, keyword_image_map):
         return "Please ask a valid question.", []
 
     try:
-        print('uioiug')
+        print('huop')
         retrieved_docs = vectordb.similarity_search(query, k=4)
-        print('hupgoh')
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        print('hiuophfd')
-        #best_keyword = find_best_matching_keyword(query, keyword_image_map)
-        best_keyword = 'Every Morning'
+        best_keyword = find_best_matching_keyword(query, keyword_image_map)
+        print(best_keyword)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
-        print('vfff')
         template = f"""
             You are a friendly, kind, and patient assistant for helpdesk. Act like a chatbot. 
             Your have to provide step-by-step instructions for user queries about using POET, based on the following content. 
