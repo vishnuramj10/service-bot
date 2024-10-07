@@ -35,7 +35,7 @@ bedrock_runtime = boto3.client(
 )
 
 
-pdf_path = "/Copy of POET_Everyday_Instructions.pdf"
+pdf_path = "/document/Copy of POET_Everyday_Instructions.pdf"
 vectordb = load_or_create_vector_db(pdf_path)
 keyword_image_map = create_keyword_mapping()
 
