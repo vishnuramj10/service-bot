@@ -86,10 +86,11 @@ def chatbot(query, vectordb, keyword_image_map):
 
     try:
         retrieved_docs = vectordb.similarity_search(query, k=4)
+        print('hupgoh')
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
         best_keyword = find_best_matching_keyword(query, keyword_image_map)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
-
+        print('vfff')
         template = f"""
             You are a friendly, kind, and patient assistant for helpdesk. Act like a chatbot. 
             Your have to provide step-by-step instructions for user queries about using POET, based on the following content. 
@@ -117,6 +118,7 @@ def chatbot(query, vectordb, keyword_image_map):
         prompt = prompt_template.format(relevant_content=relevant_content, query=query)
 
         response = invoke_llama_model(prompt)
+        print('hiuophfd')
         return response, relevant_images
     except Exception as e:
         print(f"Error processing the chatbot query: {e}")
@@ -128,7 +130,6 @@ def home():
 
 @app.route('/query', methods=['POST'])
 def ask():
-    start_time = time.time()  # Start timing
     try:
         query = request.form['message']
         response, image_paths = chatbot(query, vectordb, keyword_image_map)
@@ -136,9 +137,6 @@ def ask():
         print(f"Error handling request: {e}")
         response, image_paths = "Sorry, there was an error processing your request.", []
 
-    end_time = time.time()  
-    execution_time = end_time - start_time 
-    print(f"Execution time: {execution_time:.4f} seconds")
     
     response = response.replace('\n', '<br>') 
     return jsonify({'message': response, 'images': image_paths})
