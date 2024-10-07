@@ -104,11 +104,10 @@ def chatbot(query, vectordb, keyword_image_map):
 
     try:
         print('huop')
-        #retrieved_docs = vectordb.similarity_search(query, k=4)
+        retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
+        retrieved_docs = retriever.get_relevant_documents(query)  # Use the retriever here
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        relevant_content = "hello"
         best_keyword = find_best_matching_keyword(query, keyword_image_map)
-        print(best_keyword)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
         template = f"""
             You are a friendly, kind, and patient assistant for helpdesk. Act like a chatbot. 
