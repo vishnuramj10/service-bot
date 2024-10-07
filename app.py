@@ -126,7 +126,7 @@ def chatbot(query, vectordb, keyword_image_map):
 def home():
     return render_template('chat.html')
 
-@app.route('/ask', methods=['POST'])
+@app.route('/query', methods=['POST'])
 def ask():
     start_time = time.time()  # Start timing
     try:
