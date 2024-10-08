@@ -67,34 +67,22 @@ def invoke_llama_model(prompt_text):
 
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     try:
-        # Initialize the TF-IDF Vectorizer
-        vectorizer = TfidfVectorizer()
+        model = OpenAIEmbeddings()
 
-        # Get the list of all keywords from the keyword_image_map
-        keywords = list(keyword_image_map.keys())
+        keyword_embeddings = model.embed_documents(list(keyword_image_map.keys()))
+        user_query_embedding = model.embed_documents([user_query])
 
-        # Combine the keywords and user query into one list
-        all_texts = keywords + [user_query]
-
-        # Fit and transform the combined list into a TF-IDF matrix
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
-
-        # Compute cosine similarity between the user query (last element) and all keywords
-        similarities = cosine_similarity(tfidf_matrix[-1:], tfidf_matrix[:-1])[0]
-
-        # Find the best match (keyword with highest similarity)
+        similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
         best_match_index = np.argmax(similarities)
         best_match_similarity = similarities[best_match_index]
 
-        # If the similarity exceeds the threshold, return the best matching keyword
         if best_match_similarity >= threshold:
-            best_keyword = keywords[best_match_index]
+            best_keyword = list(keyword_image_map.keys())[best_match_index]
             return best_keyword
         else:
             return None
-
     except Exception as e:
-        print(f"Error in finding best matching keyword: {e}")
+        print("Error:", e)
         return None
 
 # Function to process the chatbot query
@@ -103,7 +91,6 @@ def chatbot(query, vectordb, keyword_image_map):
         return "Please ask a valid question.", []
 
     try:
-        print('huop')
         retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
         retrieved_docs = retriever.get_relevant_documents(query)  # Use the retriever here
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
