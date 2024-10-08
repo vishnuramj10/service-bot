@@ -5,13 +5,10 @@ import dotenv
 import numpy as np
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import PyPDFLoader
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
 from utils import *
@@ -67,7 +64,7 @@ def invoke_llama_model(prompt_text):
 
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     try:
-        model = OpenAIEmbeddings()
+        model = OpenAIEmbeddings(model = 'text-embedding-3-large')
 
         keyword_embeddings = model.embed_documents(list(keyword_image_map.keys()))
         user_query_embedding = model.embed_documents([user_query])
