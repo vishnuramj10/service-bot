@@ -64,55 +64,20 @@ def invoke_llama_model(prompt_text):
         print(f"Error invoking LLM model: {e}")
         return "Sorry, there was an error processing your request."
 
-class EmbedError(Exception):
-    """Custom exception for embedding errors."""
-    pass
-
-def generate_text_embedding(text):
-    input_data = {"inputText": text}  # Use "inputText" based on schema expectations
-    body = json.dumps(input_data)
-
-    try:
-        response = bedrock_runtime.invoke_model(
-            body=body,
-            modelId="amazon.titan-embed-image-v1",  # Adjust model ID if needed
-            accept="application/json",
-            contentType="application/json"
-        )
-        
-        # Read and parse the response
-        response_body = json.loads(response.get("body").read())
-        finish_reason = response_body.get("message")
-
-        if finish_reason is not None:
-            raise EmbedError(f"Text embeddings generation error: {finish_reason}")
-        
-        return response_body.get("embedding")
-    
-    except Exception as e:
-        print(f"Error generating text embedding: {e}")
-        raise EmbedError(f"Text embeddings generation failed: {e}")
 
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
     try:
-        keywords = list(keyword_image_map.keys())
+        model = OpenAIEmbeddings()
 
-        # Get embeddings for keywords and the user query
-        keyword_embeddings = np.array([generate_text_embedding(keyword) for keyword in keywords])
-        user_query_embedding = np.array(generate_text_embedding(user_query)).reshape(1, -1)  # Reshape for cosine similarity
+        keyword_embeddings = model.embed_documents(list(keyword_image_map.keys()))
+        user_query_embedding = model.embed_documents([user_query])
 
-        # Compute cosine similarity
         similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
-
-        print("Similarities:", similarities)  # Debug: print similarity scores
-
-        # Find the index of the best match
         best_match_index = np.argmax(similarities)
         best_match_similarity = similarities[best_match_index]
 
-        # Check if the best match meets the threshold
         if best_match_similarity >= threshold:
-            best_keyword = keywords[best_match_index]
+            best_keyword = list(keyword_image_map.keys())[best_match_index]
             return best_keyword
         else:
             return None
