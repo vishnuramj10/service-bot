@@ -3,12 +3,14 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Chroma
+import os
+from langchain.vectorstores import Chroma
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
 
 def load_or_create_vector_db(pdf_path, db_dir="vectordb/"):
     # Check if the vector DB exists on disk
-    if os.path.exists(os.path.join(db_dir, "index")):
-        vectordb = Chroma(persist_directory=db_dir, embedding_function=HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2"))
-        return vectordb
 
     # Otherwise, create and save the vector DB
     loader = PyPDFLoader(pdf_path)
@@ -18,14 +20,14 @@ def load_or_create_vector_db(pdf_path, db_dir="vectordb/"):
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.split_documents(pages)
 
-    # Initialize embeddings
-    embeddings = HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    # Initialize embeddings with OpenAI
+    print('Creating embeddings using OpenAI...')
+    embeddings = OpenAIEmbeddings()
 
     # Create the vector database
     vectordb = Chroma.from_documents(
         documents=splits,
         embedding=embeddings,
-        persist_directory=db_dir,  # Specify where to save the DB
     )
     vectordb.persist()  
 
