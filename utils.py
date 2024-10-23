@@ -3,35 +3,29 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Chroma
-import os
-from langchain.vectorstores import Chroma
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
+from sentence_transformers import SentenceTransformer
+from langchain_community.vectorstores.azuresearch import AzureSearch
 
-def load_or_create_vector_db(pdf_path, db_dir="vectordb/"):
-    # Check if the vector DB exists on disk
-
-    # Otherwise, create and save the vector DB
-    loader = PyPDFLoader(pdf_path)
+def extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_INDEX):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    full_path = ''.join([dir_path, '/', pdf_path])
+    print(f"Full pdf path: {full_path}")
+    loader = PyPDFLoader(full_path)
     pages = loader.load_and_split()
-
-    # Split the pages into chunks
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.split_documents(pages)
+    embeddings = HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-    # Initialize embeddings with OpenAI
-    print('Creating embeddings using OpenAI...')
-    embeddings = OpenAIEmbeddings()
-
-    # Create the vector database
-    vectordb = Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
+    vector_store: AzureSearch = AzureSearch(
+        azure_search_endpoint = AZURE_SEARCH_ENDPOINT,
+        azure_search_key = AZURE_SEARCH_KEY,
+        index_name = AZURE_SEARCH_INDEX,
+        embedding_function=embeddings.embed_query,
+        additional_search_client_options={"retry_total": 4}
     )
-    vectordb.persist()  
-
-    return vectordb
+    vector_store.add_documents(documents=splits)
+    
+    return vector_store
 
 # Function to create a mapping between keywords and images
 def create_keyword_mapping():

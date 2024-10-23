@@ -1,85 +1,74 @@
 import os
 import json
-import boto3
 import dotenv
 import numpy as np
 from flask import Flask, render_template, request, jsonify
-from PIL import Image
+from flask_cors import CORS
 from sklearn.metrics.pairwise import cosine_similarity
-from langchain_community.document_loaders import PyPDFLoader
-from sklearn.metrics.pairwise import cosine_similarity
-from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
+from sentence_transformers import SentenceTransformer
 from utils import *
+from waitress import serve
 import time 
+import requests
 
 # Suppress warnings
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 app = Flask(__name__)
-
+cors = CORS(app)
 dotenv.load_dotenv()
 
-aws_access_key_id = os.getenv("AWS_ACCESS_KEY")
-aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-aws_region = os.getenv("AWS_REGION", "us-east-1") 
+AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
+AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
+AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
-bedrock_runtime = boto3.client(
-    service_name='bedrock-runtime',
-    region_name=aws_region,
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key
-)
+# Azure OpenAI settings
+AZURE_OPENAI_KEY = "972c77672402466d8ba5345c4a048a3d"
+AZURE_OPENAI_ENDPOINT = "https://azure-rag-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview"
 
-
-pdf_path = "document/Copy of POET_Everyday_Instructions.pdf"
-vectordb = load_or_create_vector_db(pdf_path)
-print(vectordb)
-print('hello')
+pdf_path = "document/POET_Everyday_Instructions.pdf"
+vectordb = extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_INDEX)
 keyword_image_map = create_keyword_mapping()
 
-# Function to call the LLM model via Bedrock
-def invoke_llama_model(prompt_text):
+# Function to call the Azure OpenAI GPT-4 model
+def invoke_azure_openai_model(prompt_text):
     try:
-        model_id = "meta.llama3-70b-instruct-v1:0"
-        payload = {
-            "prompt": prompt_text,
-            "max_gen_len": 2000,
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": AZURE_OPENAI_KEY
         }
-
-        response = bedrock_runtime.invoke_model(
-            modelId=model_id,
-            contentType='application/json',
-            body=json.dumps(payload)
-        )
-
-        result = json.loads(response['body'].read().decode('utf-8'))
-        return result['generation']
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt_text}
+            ],
+            "max_tokens": 2000
+        }
+        response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content']
     except Exception as e:
-        print(f"Error invoking LLM model: {e}")
+        print(f"Error invoking Azure OpenAI model: {e}")
         return "Sorry, there was an error processing your request."
 
-
+# Function to find the best matching keyword
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
-    try:
-        model = OpenAIEmbeddings(model = 'text-embedding-3-large')
+    model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 
-        keyword_embeddings = model.embed_documents(list(keyword_image_map.keys()))
-        user_query_embedding = model.embed_documents([user_query])
+    user_query_embedding = model.encode([user_query])
+    keyword_embeddings = model.encode(list(keyword_image_map.keys()))
 
-        similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
-        best_match_index = np.argmax(similarities)
-        best_match_similarity = similarities[best_match_index]
+    similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
 
-        if best_match_similarity >= threshold:
-            best_keyword = list(keyword_image_map.keys())[best_match_index]
-            return best_keyword
-        else:
-            return None
-    except Exception as e:
-        print("Error:", e)
+    best_match_index = np.argmax(similarities)
+    best_match_similarity = similarities[best_match_index]
+    if best_match_similarity >= threshold:
+        best_keyword = list(keyword_image_map.keys())[best_match_index]
+        return best_keyword
+    else:
         return None
 
 # Function to process the chatbot query
@@ -88,8 +77,7 @@ def chatbot(query, vectordb, keyword_image_map):
         return "Please ask a valid question.", []
 
     try:
-        retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
-        retrieved_docs = retriever.get_relevant_documents(query)  # Use the retriever here
+        retrieved_docs = vectordb.similarity_search(query, k=4)
         relevant_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
         best_keyword = find_best_matching_keyword(query, keyword_image_map)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
@@ -119,8 +107,7 @@ def chatbot(query, vectordb, keyword_image_map):
         prompt_template = PromptTemplate(template=template, input_variables=["relevant_content", "query"])
         prompt = prompt_template.format(relevant_content=relevant_content, query=query)
 
-        response = invoke_llama_model(prompt)
-        print('hiuophfd')
+        response = invoke_azure_openai_model(prompt)
         return response, relevant_images
     except Exception as e:
         print(f"Error processing the chatbot query: {e}")
@@ -134,15 +121,13 @@ def home():
 def ask():
     try:
         query = request.form['message']
-        print(query)
         response, image_paths = chatbot(query, vectordb, keyword_image_map)
     except Exception as e:
         print(f"Error handling request: {e}")
         response, image_paths = "Sorry, there was an error processing your request.", []
 
-    
     response = response.replace('\n', '<br>') 
     return jsonify({'message': response, 'images': image_paths})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    serve(app, host="127.0.0.1", port = 8080)
