@@ -130,4 +130,4 @@ def ask():
     return jsonify({'message': response, 'images': image_paths})
 
 if __name__ == '__main__':
-    serve(app, host="127.0.0.1", port = 8080)
+    app.run(debug=True)
