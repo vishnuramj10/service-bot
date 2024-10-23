@@ -1,10 +1,10 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain.vectorstores import Chroma
+from langchain.document_loaders import PyPDFLoader
 from sentence_transformers import SentenceTransformer
-from langchain_community.vectorstores.azuresearch import AzureSearch
+from langchain.embeddings import OpenAIEmbeddings
 
 def extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_INDEX):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -14,7 +14,7 @@ def extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_
     pages = loader.load_and_split()
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.split_documents(pages)
-    embeddings = HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    embeddings = OpenAIEmbeddings()
 
     vector_store: AzureSearch = AzureSearch(
         azure_search_endpoint = AZURE_SEARCH_ENDPOINT,
