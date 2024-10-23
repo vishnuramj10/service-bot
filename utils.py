@@ -1,9 +1,8 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain.document_loaders import PyPDFLoader
 from sentence_transformers import SentenceTransformer
+from langchain_community.vectorstores.azuresearch import AzureSearch
 from langchain.embeddings import OpenAIEmbeddings
 
 def extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_INDEX):
