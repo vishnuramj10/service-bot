@@ -30,7 +30,7 @@ AZURE_OPENAI_KEY = "972c77672402466d8ba5345c4a048a3d"
 AZURE_OPENAI_ENDPOINT = "https://azure-rag-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview"
 
 pdf_path = "document/POET_Everyday_Instructions.pdf"
-vectordb = extract_text_and_create_embeddings(pdf_path, AZURE_SEARCH_KEY, AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_INDEX)
+vectordb = extract_text_and_create_embeddings(pdf_path)
 keyword_image_map = create_keyword_mapping()
 
 # Function to call the Azure OpenAI GPT-4 model
