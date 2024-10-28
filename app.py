@@ -7,9 +7,7 @@ from flask_cors import CORS
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
-from sentence_transformers import SentenceTransformer
 from utils import *
-from waitress import serve
 import time 
 import requests
 
@@ -21,9 +19,7 @@ app = Flask(__name__)
 cors = CORS(app)
 dotenv.load_dotenv()
 
-AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
-AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
-AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Azure OpenAI settings
 AZURE_OPENAI_KEY = "972c77672402466d8ba5345c4a048a3d"
@@ -48,6 +44,7 @@ def invoke_azure_openai_model(prompt_text):
             "max_tokens": 2000
         }
         response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload)
+        print(response)
         response.raise_for_status()
         return response.json()['choices'][0]['message']['content']
     except Exception as e:
@@ -56,13 +53,16 @@ def invoke_azure_openai_model(prompt_text):
 
 # Function to find the best matching keyword
 def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
-    model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    embeddings_model = OpenAIEmbeddings()
+    user_query_embedding = embeddings_model.embed_query(user_query)
 
-    user_query_embedding = model.encode([user_query])
-    keyword_embeddings = model.encode(list(keyword_image_map.keys()))
+    # Generate embeddings for each keyword in the map
+    keyword_embeddings = [embeddings_model.embed_query(keyword) for keyword in keyword_image_map.keys()]
 
-    similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
+    # Calculate cosine similarity
+    similarities = cosine_similarity([user_query_embedding], keyword_embeddings)[0]
 
+    # Find the best match based on similarity score
     best_match_index = np.argmax(similarities)
     best_match_similarity = similarities[best_match_index]
     if best_match_similarity >= threshold:
@@ -82,17 +82,20 @@ def chatbot(query, vectordb, keyword_image_map):
         best_keyword = find_best_matching_keyword(query, keyword_image_map)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
         template = f"""
-            You are a friendly, kind, and patient assistant for helpdesk. Act like a chatbot. 
-            Your have to provide step-by-step instructions for user queries about using POET, based on the following content. 
-            Do not add any information that is not present in the given content. If the query does not match the context, request the user to stay in context. 
+            You are a friendly, kind, and patient AI assistant for helpdesk. Keep your conversations human-like.
+            You have to provide step-by-step instructions for user queries about using POET, based on the following content. 
+            Do not add any information that is not present in the given content. If the query does not match the context, request the user to stay in context.
+            Please describe about what taks you can do in short when prompted.
+            For relevant queries, start the response with "Here are the steps to perform....". You shouldn't say this for irrelevant queries. 
             Format your response as follow if the query is related to the context:
             
-                1. Start the response by "Surely I can help you. Here are the steps:". 
-                2. Then, ALWAYS provide a bullet point list of all the steps.
-                3. Number each step and provide clear, concise instructions.
-                4. If there are sub-steps, use indented bullet points.
-                5. Use exactly the same wording and formatting as in the original instructions.
-                6. DO NOT skip any original instructions.
+                1. ALWAYS provide a point list of all the steps.
+                2. Number each step and provide clear, concise instructions.
+                3. If there are sub-steps, use indented bullet points.
+                4. Use exactly the same wording and formatting as in the original instructions.
+                5. DO NOT skip any original instructions.
+                6. If the user queries any basic conversational questions, respond concisely and tell the user to ask about the relevant parts of the document.
+                7. Sometimes the user can make mistakes while typing the query. So, please account for typos.
 
             Keep your answers to the point and don't include text from unrelated parts of the document.
             Do not include phrases like "based on the context given" or "based on this line." or any explanation
@@ -131,3 +134,4 @@ def ask():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    #serve(app, host="127.0.0.1", port = 8080)

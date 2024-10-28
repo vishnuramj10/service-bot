@@ -2,11 +2,7 @@ import os
 from langchain.embeddings import OpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Chroma
-from sentence_transformers import SentenceTransformer
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
 
 def extract_text_and_create_embeddings(pdf_path):
     # Load and split PDF
