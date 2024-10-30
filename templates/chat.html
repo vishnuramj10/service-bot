@@ -200,7 +200,7 @@
         chatLog.scrollTop = chatLog.scrollHeight;
 
         // Send the message to the bot
-        fetch('/svcpoc/query', {
+        fetch('/query', {
             method: 'POST',
             body: new URLSearchParams('message=' + message),
             headers: {
