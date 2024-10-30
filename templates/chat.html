@@ -131,13 +131,11 @@
             color: #E5763D;
         }
         .chat-message img {
-            max-width: 100%; /* Ensure image does not exceed the width of the container */
+            width: 70%; /* Ensure image does not exceed the width of the container */
             height: auto; /* Maintain aspect ratio */
             border-radius: 10px; /* Rounded corners */
             margin-top: 5px; /* Spacing from other elements */
             display: block; /* Ensures proper spacing */
-            margin-left: auto; /* Center the image */
-            margin-right: auto; /* Center the image */
         }
     </style>
 </head>
@@ -202,7 +200,7 @@
         chatLog.scrollTop = chatLog.scrollHeight;
 
         // Send the message to the bot
-        fetch('/query', {
+        fetch('/svcpoc/query', {
             method: 'POST',
             body: new URLSearchParams('message=' + message),
             headers: {
@@ -226,7 +224,7 @@
                 data.images.forEach(image => {
                     chatLog.innerHTML += `
                         <div class="chat-message bot-message">
-                            <img src="${image}" alt="Image" style="max-width: 70%; height: auto; border-radius: 10px;">
+                            <img src="${image}" alt="Image">
                         </div>`;
                 });
             }
