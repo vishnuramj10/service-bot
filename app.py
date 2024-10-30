@@ -51,44 +51,23 @@ def invoke_azure_openai_model(prompt_text):
         print(f"Error invoking Azure OpenAI model: {e}")
         return "Sorry, there was an error processing your request."
 
-# Function to find the best matching keyword
-def find_best_matching_keyword(user_query, keyword_image_map, threshold=0.5):
-    embeddings_model = OpenAIEmbeddings()
-    user_query_embedding = embeddings_model.embed_query(user_query)
-
-    # Generate embeddings for each keyword in the map
-    keyword_embeddings = [embeddings_model.embed_query(keyword) for keyword in keyword_image_map.keys()]
-
-    # Calculate cosine similarity
-    similarities = cosine_similarity([user_query_embedding], keyword_embeddings)[0]
-
-    # Find the best match based on similarity score
-    best_match_index = np.argmax(similarities)
-    best_match_similarity = similarities[best_match_index]
-    if best_match_similarity >= threshold:
-        best_keyword = list(keyword_image_map.keys())[best_match_index]
-        return best_keyword
-    else:
-        return None
 
 def find_best_matching_keyword(user_query, response, keyword_image_map, threshold=0.378):
     model = OpenAIEmbeddings()
 
-    # Encode the user query and the keys in the keyword_image_map
-    user_query_embedding = model.embed_query(user_query + ' ' + response )
-    keyword_embeddings = [model.embed_query(keyword) for keyword in keyword_image_map.keys()]
+    # Encode the user query with the response
+    user_query_embedding = np.array(model.embed_query(user_query + ' ' + response)).reshape(1, -1)  # Ensure it's 2D
+
+    # Encode the keys in the keyword_image_map
+    keyword_embeddings = np.array([model.embed_query(keyword) for keyword in keyword_image_map.keys()])
 
     # Compute cosine similarity between the user query and each keyword
-
-    similarities = cosine_similarity(user_query_embedding, keyword_embeddings)[0]
-    #similairty score
+    similarities = cosine_similarity(user_query_embedding, keyword_embeddings)
 
     # Find the index of the most similar keyword
-    similarities = cosine_similarity([user_query_embedding], keyword_embeddings)[0]
-
-    # Find the best match based on similarity score
     best_match_index = np.argmax(similarities)
-    best_match_similarity = similarities[best_match_index]
+    best_match_similarity = similarities[0][best_match_index]  # Get the similarity score
+
     if best_match_similarity >= threshold:
         best_keyword = list(keyword_image_map.keys())[best_match_index]
         return best_keyword
@@ -138,7 +117,7 @@ def chatbot(query, vectordb, keyword_image_map):
         prompt_template = PromptTemplate(template=template, input_variables=["relevant_content", "query"])
         prompt = prompt_template.format(relevant_content=relevant_content, query=query)
 
-        response = invoke_llama_model(prompt)
+        response = invoke_azure_openai_model(prompt)
         best_keyword = find_best_matching_keyword(query, response, keyword_image_map)
         relevant_images = keyword_image_map.get(best_keyword, []) if best_keyword else []
 
