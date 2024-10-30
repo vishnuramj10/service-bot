@@ -26,10 +26,10 @@ def extract_text_and_create_embeddings(pdf_path):
 # Function to create a mapping between keywords and images
 def create_keyword_mapping():
     keyword_image_map = {
-        "Every Morning": ["/static/extracted_images/page_1_img_1.png"],
-        "Setting an active customer": ["/static/extracted_images/page_1_img_2.png", "/static/extracted_images/page_1_img_3.png"],
-        "Sending an order": ["/static/extracted_images/page_4_img_1.png","/static/extracted_images/page_4_img_3.png"],
-        "Verifying an order": ["/static/extracted_images/page_4_img_2.png","/static/extracted_images/page_4_img_4.png"]
+        "Every Morning Communications Call Host download": ["/static/extracted_images/page_1_img_1.png"],
+        "Setting an active customer Work with title bar (F)edway (A)utomated (S)ales (T)ransactions”. ": ["/static/extracted_images/page_1_img_2.png", "/static/extracted_images/page_1_img_3.png"],
+        "Sending an order Communications Files status Printbacks": ["/static/extracted_images/page_4_img_1.png","/static/extracted_images/page_4_img_3.png"],
+        "Verifying an order Work with Order Log Reports (F2)": ["/static/extracted_images/page_4_img_2.png","/static/extracted_images/page_4_img_4.png"]
 
     }
     return keyword_image_map
